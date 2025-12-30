@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>按键测试 - 胡萝卜和纸巾</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .falling-item {
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            pointer-events: none;
+        }
+
+        .hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 24px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .hint p {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="hint">
+        <p>按 D 键 → 掉落纸巾</p>
+        <p>按 K 键 → 掉落胡萝卜</p>
+    </div>
+
+    <script>
+        // 重力加速度（像素/帧²）
+        const GRAVITY = 0.5;
+
+        // 存储所有掉落的物品
+        const fallingItems = [];
+
+        // 按键监听
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+
+            if (key === 'd') {
+                // 掉落纸巾
+                createFallingItem('zhijin.png', 'zhijin');
+            } else if (key === 'k') {
+                // 掉落胡萝卜
+                createFallingItem('huluobo.png', 'huluobo');
+            }
+        });
+
+        function createFallingItem(imageSrc, type) {
+            // 创建图片元素
+            const img = document.createElement('img');
+            img.src = imageSrc;
+            img.className = 'falling-item';
+
+            // 随机水平位置
+            const x = Math.random() * (window.innerWidth - 160);
+            img.style.left = x + 'px';
+            img.style.top = '-160px'; // 从顶部上方开始
+
+            document.body.appendChild(img);
+
+            // 物理属性
+            const item = {
+                element: img,
+                x: x,
+                y: -160,
+                velocityY: 0, // 初始垂直速度
+                type: type
+            };
+
+            fallingItems.push(item);
+        }
+
+        // 动画循环
+        function animate() {
+            // 更新所有掉落物品
+            for (let i = fallingItems.length - 1; i >= 0; i--) {
+                const item = fallingItems[i];
+
+                // 应用重力
+                item.velocityY += GRAVITY;
+                item.y += item.velocityY;
+
+                // 更新位置
+                item.element.style.top = item.y + 'px';
+
+                // 如果掉出屏幕底部，移除
+                if (item.y > window.innerHeight) {
+                    item.element.remove();
+                    fallingItems.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // 启动动画循环
+        animate();
+    </script>
+</body>
+</html>

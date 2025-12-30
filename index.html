@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>节奏大师 - Rhythm Master</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-header">
+            <div class="stat">
+                <span class="label">分数</span>
+                <div class="score-display">
+                    <img id="score-icon" class="score-icon" src="hebang.png" alt="分数">
+                    <span id="score" class="value">0</span>
+                </div>
+            </div>
+            <div class="stat">
+                <span class="label">连击</span>
+                <span id="combo" class="value">0</span>
+            </div>
+            <div class="stat">
+                <span class="label">准确率</span>
+                <span id="accuracy" class="value">100%</span>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="judgment" class="hidden"></div>
+
+        <div id="game-over" class="hidden">
+            <h1>游戏结束</h1>
+            <div class="final-stats">
+                <p>最终分数: <span id="final-score">0</span></p>
+                <p>最高连击: <span id="final-combo">0</span></p>
+                <p>准确率: <span id="final-accuracy">0</span>%</p>
+                <p>Perfect: <span id="final-perfect">0</span> | Good: <span id="final-good">0</span> | Miss: <span id="final-miss">0</span></p>
+            </div>
+            <button id="restart-btn">重新开始 (按 R)</button>
+        </div>
+
+        <div id="start-screen">
+            <h1>猫猫节奏大师</h1>
+            <p class="instructions">跟随音乐节奏，在音符到达判定线时按下对应按键！</p>
+
+            <div class="audio-upload-section">
+                <h3>选择音乐模式</h3>
+                <div class="upload-options">
+                    <div class="upload-option">
+                        <input type="radio" id="mode-default" name="music-mode" value="default" checked>
+                        <label for="mode-default">
+                            <strong>内置音乐</strong>
+                            <span>使用程序生成的电子音乐</span>
+                        </label>
+                    </div>
+                    <div class="upload-option">
+                        <input type="radio" id="mode-upload" name="music-mode" value="upload">
+                        <label for="mode-upload">
+                            <strong>上传音乐</strong>
+                            <span>自动分析音频生成谱面</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="file-upload-area" class="hidden">
+                    <input type="file" id="audio-file" accept="audio/*">
+                    <p class="upload-hint">
+                        支持 MP3, WAV, OGG 等格式<br>
+                        建议使用节奏感强的电子音乐（EDM, House, Dubstep等）<br>
+                        <strong>⚠️ 游戏将播放你上传的音乐</strong>
+                    </p>
+
+                    <div id="manual-controls" class="hidden">
+                        <h4>手动调整（可选）</h4>
+                        <div class="control-group">
+                            <label>手动设置BPM: <span id="manual-bpm-value">120</span></label>
+                            <input type="range" id="manual-bpm" min="60" max="200" value="120" step="1">
+                            <small>如果自动检测不准确，可以手动设置</small>
+                        </div>
+                        <div class="control-group">
+                            <label>检测灵敏度: <span id="sensitivity-value">1.5</span></label>
+                            <input type="range" id="sensitivity" min="0.8" max="2.5" value="1.5" step="0.1">
+                            <small>降低灵敏度减少误判，提高灵敏度检测更多节拍</small>
+                        </div>
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" id="use-manual-bpm">
+                                使用手动BPM（忽略自动检测）
+                            </label>
+                        </div>
+                    </div>
+
+                    <button id="analyze-btn" disabled>分析音频并生成谱面</button>
+                    <div id="analysis-status" class="hidden"></div>
+
+                    <button id="preview-btn" class="hidden">预览节拍点</button>
+                    <div id="beat-preview" class="hidden">
+                        <canvas id="beat-canvas" width="700" height="150"></canvas>
+                        <p class="preview-hint">红线 = 检测到的节拍点 | 点击播放预览</p>
+                        <button id="play-preview-btn">播放预览</button>
+                        <button id="regenerate-btn">重新生成谱面</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="key-display">
+                    <div class="key-box left">
+                        <span class="key-label">D</span>
+                        <span class="key-desc">左侧音符</span>
+                    </div>
+                    <div class="key-box right">
+                        <span class="key-label">K</span>
+                        <span class="key-desc">右侧音符</span>
+                    </div>
+                </div>
+                <div class="judgment-info">
+                    <p><span class="perfect">Perfect</span> - 完美时机 (+100分)</p>
+                    <p><span class="good">Good</span> - 良好时机 (+50分)</p>
+                    <p><span class="miss">Miss</span> - 未击中 (连击中断)</p>
+                    <p style="margin-top: 15px; opacity: 0.8;">按 M 键切换静音</p>
+                </div>
+            </div>
+            <button id="start-btn">开始游戏 (按空格)</button>
+        </div>
+    </div>
+
+    <script src="js/constants.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/image-loader.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/audio-analyzer.js"></script>
+    <script src="js/beatmap.js"></script>
+    <script src="js/note.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

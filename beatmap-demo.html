@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>节拍检测演示 - Beat Detection Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #visualizer {
+            width: 100%;
+            height: 200px;
+            background: #000;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        #beatIndicator {
+            width: 100px;
+            height: 100px;
+            background: #ccc;
+            border-radius: 50%;
+            margin: 20px auto;
+            transition: all 0.1s;
+        }
+
+        #beatIndicator.beat {
+            background: #f39c12;
+            transform: scale(1.2);
+            box-shadow: 0 0 30px #f39c12;
+        }
+
+        .info-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .info-box label {
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 10px;
+        }
+
+        .info-box span {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .beat-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .beat-marker {
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+
+        .explanation {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .explanation h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .explanation ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        input[type="file"] {
+            margin: 10px 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        #sensitivity {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 节拍检测演示</h1>
+        <p class="description">
+            这个工具演示了如何从音频中自动检测节拍。你可以使用麦克风输入或上传音频文件，
+            系统会分析音频并尝试找出节奏点。
+        </p>
+
+        <div class="section">
+            <h2>1. 选择音频源</h2>
+            <div class="controls">
+                <button id="micBtn">使用麦克风</button>
+                <button id="demoBtn">播放示例音乐</button>
+                <button id="stopBtn" disabled>停止</button>
+                <div>
+                    <label>灵敏度:</label>
+                    <input type="range" id="sensitivity" min="10" max="100" value="40">
+                    <span id="sensitivityValue">40</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>2. 音频可视化</h2>
+            <canvas id="visualizer"></canvas>
+            <div id="beatIndicator"></div>
+            <div class="info-box">
+                <label>检测到的BPM:</label>
+                <span id="bpmDisplay">--</span>
+            </div>
+            <div class="info-box">
+                <label>检测到的节拍:</label>
+                <span id="beatCount">0</span>
+                <div class="beat-list" id="beatList"></div>
+            </div>
+        </div>
+
+        <div class="explanation">
+            <h3>💡 这是如何工作的？</h3>
+            <ul>
+                <li><strong>音频分析：</strong>使用Web Audio API的AnalyserNode来获取音频的频率和振幅数据</li>
+                <li><strong>能量检测：</strong>计算音频的总能量（所有频率的振幅之和）</li>
+                <li><strong>峰值检测：</strong>当能量突然升高（超过平均值+阈值）时，认为是一个节拍点</li>
+                <li><strong>BPM计算：</strong>根据节拍之间的时间间隔计算每分钟的节拍数</li>
+                <li><strong>局限性：</strong>这种简单算法只能检测明显的节拍，复杂音乐需要更高级的算法</li>
+            </ul>
+        </div>
+
+        <div class="explanation" style="background: #fff3cd; border-left-color: #ffc107;">
+            <h3>⚠️ 真实游戏中的制谱</h3>
+            <ul>
+                <li><strong>OSU!</strong> - 完全人工制谱，社区上传谱面</li>
+                <li><strong>节奏大师</strong> - 专业谱师手工制作每首歌的谱面</li>
+                <li><strong>Beat Saber</strong> - 谱面编辑器 + 人工调整</li>
+                <li><strong>Audition（劲舞团）</strong> - 根据音乐的鼓点、旋律、人声精心设计</li>
+                <li>自动检测只能作为<strong>辅助工具</strong>，最终质量还是要靠人工调整！</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let bufferLength;
+        let source;
+        let animationId;
+        let isRunning = false;
+
+        let beatTimes = [];
+        let lastBeatTime = 0;
+        let energyHistory = [];
+        let sensitivity = 40;
+
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth;
+        canvas.height = 200;
+
+        const beatIndicator = document.getElementById('beatIndicator');
+        const bpmDisplay = document.getElementById('bpmDisplay');
+        const beatCountDisplay = document.getElementById('beatCount');
+        const beatList = document.getElementById('beatList');
+
+        document.getElementById('sensitivity').addEventListener('input', (e) => {
+            sensitivity = parseInt(e.target.value);
+            document.getElementById('sensitivityValue').textContent = sensitivity;
+        });
+
+        document.getElementById('micBtn').addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                initAudio(stream);
+            } catch (error) {
+                alert('无法访问麦克风: ' + error.message);
+            }
+        });
+
+        document.getElementById('demoBtn').addEventListener('click', () => {
+            initDemoAudio();
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            stopAudio();
+        });
+
+        function initAudio(stream) {
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+
+            bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+
+            source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            isRunning = true;
+            beatTimes = [];
+            energyHistory = [];
+
+            document.getElementById('micBtn').disabled = true;
+            document.getElementById('demoBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+
+            visualize();
+        }
+
+        function initDemoAudio() {
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+
+            bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+
+            // 创建一个简单的节奏音乐
+            const bpm = 120;
+            const beatInterval = 60 / bpm;
+
+            playDemoBeat(beatInterval);
+
+            isRunning = true;
+            beatTimes = [];
+            energyHistory = [];
+
+            document.getElementById('micBtn').disabled = true;
+            document.getElementById('demoBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+
+            visualize();
+        }
+
+        function playDemoBeat(beatInterval) {
+            const now = audioContext.currentTime;
+
+            // 播放30秒的示例节拍
+            for (let i = 0; i < 60; i++) {
+                const time = now + i * beatInterval;
+                playKick(time);
+                if (i % 4 === 2) {
+                    playSnare(time);
+                }
+            }
+        }
+
+        function playKick(time) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.frequency.value = 150;
+            osc.type = 'sine';
+
+            gain.gain.setValueAtTime(1, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+
+            osc.connect(gain);
+            gain.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            osc.start(time);
+            osc.stop(time + 0.5);
+        }
+
+        function playSnare(time) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.frequency.value = 200;
+            osc.type = 'triangle';
+
+            gain.gain.setValueAtTime(0.5, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+
+            osc.connect(gain);
+            gain.connect(analyser);
+
+            osc.start(time);
+            osc.stop(time + 0.2);
+        }
+
+        function visualize() {
+            if (!isRunning) return;
+
+            animationId = requestAnimationFrame(visualize);
+
+            analyser.getByteFrequencyData(dataArray);
+
+            // 绘制频谱
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const barHeight = (dataArray[i] / 255) * canvas.height;
+
+                const hue = (i / bufferLength) * 360;
+                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+
+                x += barWidth + 1;
+            }
+
+            // 节拍检测
+            detectBeat();
+        }
+
+        function detectBeat() {
+            // 计算当前能量
+            let energy = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                energy += dataArray[i];
+            }
+            energy = energy / bufferLength;
+
+            // 保存能量历史
+            energyHistory.push(energy);
+            if (energyHistory.length > 50) {
+                energyHistory.shift();
+            }
+
+            // 计算平均能量
+            const avgEnergy = energyHistory.reduce((a, b) => a + b, 0) / energyHistory.length;
+
+            // 检测峰值
+            const threshold = avgEnergy + sensitivity;
+            const now = Date.now();
+
+            if (energy > threshold && now - lastBeatTime > 200) {
+                onBeatDetected();
+                lastBeatTime = now;
+            }
+        }
+
+        function onBeatDetected() {
+            const now = Date.now();
+            beatTimes.push(now);
+
+            // 只保留最近的20个节拍
+            if (beatTimes.length > 20) {
+                beatTimes.shift();
+            }
+
+            // 计算BPM
+            if (beatTimes.length >= 2) {
+                const intervals = [];
+                for (let i = 1; i < beatTimes.length; i++) {
+                    intervals.push(beatTimes[i] - beatTimes[i - 1]);
+                }
+                const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+                const bpm = Math.round(60000 / avgInterval);
+                bpmDisplay.textContent = bpm;
+            }
+
+            // 视觉反馈
+            beatIndicator.classList.add('beat');
+            setTimeout(() => {
+                beatIndicator.classList.remove('beat');
+            }, 100);
+
+            // 更新节拍计数
+            beatCountDisplay.textContent = beatTimes.length;
+
+            // 添加节拍标记
+            const marker = document.createElement('div');
+            marker.className = 'beat-marker';
+            marker.textContent = beatTimes.length;
+            beatList.appendChild(marker);
+
+            // 只保留最近20个标记
+            while (beatList.children.length > 20) {
+                beatList.removeChild(beatList.firstChild);
+            }
+        }
+
+        function stopAudio() {
+            isRunning = false;
+
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+
+            if (source) {
+                source.disconnect();
+            }
+
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            document.getElementById('micBtn').disabled = false;
+            document.getElementById('demoBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    </script>
+</body>
+</html>

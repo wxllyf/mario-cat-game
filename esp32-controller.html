@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 串口控制器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            max-width: 600px;
+            width: 100%;
+            color: #fff;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 30px;
+            text-align: center;
+            background: linear-gradient(135deg, #ffd700, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.disconnected {
+            background: rgba(231, 76, 60, 0.3);
+            border: 2px solid #e74c3c;
+        }
+
+        .status.connected {
+            background: rgba(46, 204, 113, 0.3);
+            border: 2px solid #2ecc71;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .log {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry .time {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .log-entry .data {
+            color: #4facfe;
+        }
+
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .info h3 {
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+
+        .info p {
+            margin: 5px 0;
+        }
+
+        .key-indicator {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .key-box {
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .key-box.left {
+            background: rgba(240, 147, 251, 0.3);
+            border: 2px solid #f093fb;
+        }
+
+        .key-box.right {
+            background: rgba(79, 172, 254, 0.3);
+            border: 2px solid #4facfe;
+        }
+
+        .key-box.active {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px currentColor;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 ESP32 串口控制器</h1>
+
+        <div id="status" class="status disconnected">
+            未连接
+        </div>
+
+        <div class="key-indicator">
+            <div id="key-left" class="key-box left">D (纸巾)</div>
+            <div id="key-right" class="key-box right">K (胡萝卜)</div>
+        </div>
+
+        <button id="connectBtn" onclick="connectSerial()">连接 ESP32</button>
+        <button id="disconnectBtn" onclick="disconnectSerial()" disabled>断开连接</button>
+
+        <div class="log" id="log">
+            <div class="log-entry">
+                <span class="time">等待连接...</span>
+            </div>
+        </div>
+
+        <div class="info">
+            <h3>📋 使用说明</h3>
+            <p><strong>1.</strong> 点击"连接 ESP32"按钮</p>
+            <p><strong>2.</strong> 在弹出的窗口中选择对应的串口设备</p>
+            <p><strong>3.</strong> ESP32 发送的数据格式：</p>
+            <p style="margin-left: 20px;">• 发送 <code style="color: #f093fb;">"D"</code> 或 <code style="color: #f093fb;">"LEFT"</code> → 触发纸巾按键</p>
+            <p style="margin-left: 20px;">• 发送 <code style="color: #4facfe;">"K"</code> 或 <code style="color: #4facfe;">"RIGHT"</code> → 触发胡萝卜按键</p>
+            <p><strong>4.</strong> 波特率：115200</p>
+        </div>
+    </div>
+
+    <script>
+        let port = null;
+        let reader = null;
+        let keepReading = false;
+
+        const statusEl = document.getElementById('status');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const logEl = document.getElementById('log');
+        const keyLeftEl = document.getElementById('key-left');
+        const keyRightEl = document.getElementById('key-right');
+
+        // 检查浏览器是否支持 Web Serial API
+        if (!('serial' in navigator)) {
+            alert('您的浏览器不支持 Web Serial API\n请使用最新版的 Chrome、Edge 或 Opera 浏览器');
+        }
+
+        async function connectSerial() {
+            try {
+                // 请求串口访问
+                port = await navigator.serial.requestPort();
+
+                // 打开串口（波特率 115200）
+                await port.open({ baudRate: 115200 });
+
+                updateStatus('已连接', true);
+                addLog('成功连接到 ESP32');
+
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+
+                // 开始读取数据
+                keepReading = true;
+                readLoop();
+
+            } catch (error) {
+                console.error('连接失败:', error);
+                addLog('连接失败: ' + error.message, 'error');
+                alert('连接失败: ' + error.message);
+            }
+        }
+
+        async function disconnectSerial() {
+            if (port) {
+                keepReading = false;
+
+                // 关闭 reader
+                if (reader) {
+                    try {
+                        await reader.cancel();
+                    } catch (error) {
+                        console.error('关闭 reader 失败:', error);
+                    }
+                }
+
+                // 关闭端口
+                try {
+                    await port.close();
+                } catch (error) {
+                    console.error('关闭端口失败:', error);
+                }
+
+                port = null;
+                reader = null;
+
+                updateStatus('未连接', false);
+                addLog('已断开连接');
+
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        async function readLoop() {
+            while (port && port.readable && keepReading) {
+                try {
+                    const textDecoder = new TextDecoderStream();
+                    const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+                    reader = textDecoder.readable.getReader();
+
+                    while (keepReading) {
+                        const { value, done } = await reader.read();
+                        if (done) {
+                            break;
+                        }
+
+                        if (value) {
+                            // 处理接收到的数据
+                            const data = value.trim();
+                            addLog('接收: ' + data);
+                            handleCommand(data);
+                        }
+                    }
+
+                    reader.releaseLock();
+                } catch (error) {
+                    console.error('读取错误:', error);
+                    addLog('读取错误: ' + error.message, 'error');
+                    break;
+                }
+            }
+        }
+
+        function handleCommand(command) {
+            const cmd = command.toUpperCase();
+
+            // 触发对应的按键事件
+            if (cmd === 'D' || cmd === 'LEFT') {
+                simulateKeyPress('d');
+                flashKey('left');
+                addLog('✅ 触发纸巾按键 (D)', 'success');
+            } else if (cmd === 'K' || cmd === 'RIGHT') {
+                simulateKeyPress('k');
+                flashKey('right');
+                addLog('✅ 触发胡萝卜按键 (K)', 'success');
+            } else {
+                addLog('⚠️ 未知指令: ' + command, 'warning');
+            }
+        }
+
+        function simulateKeyPress(key) {
+            // 模拟键盘按下事件
+            const event = new KeyboardEvent('keydown', {
+                key: key,
+                code: key === 'd' ? 'KeyD' : 'KeyK',
+                keyCode: key === 'd' ? 68 : 75,
+                which: key === 'd' ? 68 : 75,
+                bubbles: true,
+                cancelable: true
+            });
+            document.dispatchEvent(event);
+
+            // 模拟键盘抬起事件
+            setTimeout(() => {
+                const upEvent = new KeyboardEvent('keyup', {
+                    key: key,
+                    code: key === 'd' ? 'KeyD' : 'KeyK',
+                    keyCode: key === 'd' ? 68 : 75,
+                    which: key === 'd' ? 68 : 75,
+                    bubbles: true,
+                    cancelable: true
+                });
+                document.dispatchEvent(upEvent);
+            }, 100);
+        }
+
+        function flashKey(side) {
+            const element = side === 'left' ? keyLeftEl : keyRightEl;
+            element.classList.add('active');
+            setTimeout(() => {
+                element.classList.remove('active');
+            }, 200);
+        }
+
+        function updateStatus(text, connected) {
+            statusEl.textContent = text;
+            statusEl.className = 'status ' + (connected ? 'connected' : 'disconnected');
+        }
+
+        function addLog(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+
+            let color = '#4facfe';
+            if (type === 'error') color = '#e74c3c';
+            if (type === 'success') color = '#2ecc71';
+            if (type === 'warning') color = '#f39c12';
+
+            entry.innerHTML = `
+                <span class="time">[${time}]</span>
+                <span class="data" style="color: ${color}">${message}</span>
+            `;
+
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+
+            // 限制日志数量
+            while (logEl.children.length > 50) {
+                logEl.removeChild(logEl.firstChild);
+            }
+        }
+
+        // 页面关闭时自动断开连接
+        window.addEventListener('beforeunload', () => {
+            if (port) {
+                disconnectSerial();
+            }
+        });
+    </script>
+</body>
+</html>
