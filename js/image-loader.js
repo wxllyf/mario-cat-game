@@ -5,12 +5,14 @@ class ImageLoader {
         this.loadedCount = 0;
         this.totalCount = 0;
         this.onAllLoaded = null;
+        this.onProgress = null;
     }
 
     // 加载所有图片
-    loadImages(imageConfig, callback) {
+    loadImages(imageConfig, callback, onProgress) {
         this.totalCount = Object.keys(imageConfig).length;
         this.onAllLoaded = callback;
+        this.onProgress = onProgress;
 
         if (this.totalCount === 0) {
             if (callback) callback();
@@ -22,6 +24,7 @@ class ImageLoader {
             img.onload = () => {
                 this.loadedCount++;
                 console.log(`图片加载成功: ${key} (${this.loadedCount}/${this.totalCount})`);
+                this.updateProgress();
                 if (this.loadedCount === this.totalCount && this.onAllLoaded) {
                     this.onAllLoaded();
                 }
@@ -29,12 +32,20 @@ class ImageLoader {
             img.onerror = () => {
                 console.error(`图片加载失败: ${key} - ${imageConfig[key]}`);
                 this.loadedCount++;
+                this.updateProgress();
                 if (this.loadedCount === this.totalCount && this.onAllLoaded) {
                     this.onAllLoaded();
                 }
             };
             img.src = imageConfig[key];
             this.images[key] = img;
+        }
+    }
+
+    updateProgress() {
+        if (this.onProgress) {
+            const progress = Math.floor((this.loadedCount / this.totalCount) * 100);
+            this.onProgress(progress, this.loadedCount, this.totalCount);
         }
     }
 

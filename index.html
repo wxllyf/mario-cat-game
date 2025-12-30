@@ -7,7 +7,19 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
+    <!-- 加载屏幕 -->
+    <div id="loading-screen">
+        <div class="loading-content">
+            <h1>🎮 节奏大师</h1>
+            <div class="loading-bar-container">
+                <div id="loading-bar" class="loading-bar"></div>
+            </div>
+            <p id="loading-text">加载中... 0%</p>
+            <p class="loading-hint">正在加载游戏资源</p>
+        </div>
+    </div>
+
+    <div id="game-container" class="hidden">
         <div id="game-header">
             <div class="stat">
                 <span class="label">分数</span>
@@ -27,6 +39,18 @@
         </div>
 
         <canvas id="gameCanvas"></canvas>
+
+        <!-- 手机虚拟按键 -->
+        <div id="mobile-controls" class="mobile-controls">
+            <button id="btn-left" class="mobile-btn left-btn">
+                <span class="btn-label">D</span>
+                <span class="btn-icon">📄</span>
+            </button>
+            <button id="btn-right" class="mobile-btn right-btn">
+                <span class="btn-label">K</span>
+                <span class="btn-icon">🥕</span>
+            </button>
+        </div>
 
         <div id="judgment" class="hidden"></div>
 
@@ -116,7 +140,6 @@
                         <span class="key-desc">右侧音符</span>
                     </div>
                 </div>
-                <p class="mobile-hint">📱 手机端：点击屏幕左侧/右侧即可</p>
                 <div class="judgment-info">
                     <p><span class="perfect">Perfect</span> - 完美时机 (+100分)</p>
                     <p><span class="good">Good</span> - 良好时机 (+50分)</p>

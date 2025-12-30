@@ -93,34 +93,37 @@ class Game {
             }
         });
 
-        // 触摸屏支持（手机端）
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (this.gameState !== 'playing') return;
+        // 虚拟按钮支持（手机端）
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
 
-            // 处理多点触摸
-            for (let i = 0; i < e.touches.length; i++) {
-                const touch = e.touches[i];
-                const rect = this.canvas.getBoundingClientRect();
-                const touchX = touch.clientX - rect.left;
-
-                // 判断触摸位置在屏幕左侧还是右侧
-                if (touchX < CANVAS_WIDTH / 2) {
-                    // 左侧 - 纸巾
+        if (btnLeft) {
+            btnLeft.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (this.gameState === 'playing') {
                     this.handleKeyPress('left');
-                } else {
-                    // 右侧 - 胡萝卜
+                }
+            });
+
+            btnLeft.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.lanes.left.release();
+            });
+        }
+
+        if (btnRight) {
+            btnRight.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (this.gameState === 'playing') {
                     this.handleKeyPress('right');
                 }
-            }
-        });
+            });
 
-        this.canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            // 释放所有轨道
-            this.lanes.left.release();
-            this.lanes.right.release();
-        });
+            btnRight.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.lanes.right.release();
+            });
+        }
 
         this.startBtn.addEventListener('click', () => this.startGame());
         this.restartBtn.addEventListener('click', () => this.startGame());
@@ -911,9 +914,36 @@ class Game {
 }
 
 window.addEventListener('load', () => {
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingBar = document.getElementById('loading-bar');
+    const loadingText = document.getElementById('loading-text');
+    const gameContainer = document.getElementById('game-container');
+
     // 先加载图片资源，然后创建游戏实例
-    imageLoader.loadImages(IMAGE_CONFIG, () => {
-        console.log('所有图片加载完成，开始游戏');
-        new Game();
-    });
+    imageLoader.loadImages(
+        IMAGE_CONFIG,
+        // 加载完成回调
+        () => {
+            console.log('所有资源加载完成');
+            loadingText.textContent = '加载完成！';
+            loadingBar.style.width = '100%';
+
+            // 等待一小段时间后隐藏加载屏幕
+            setTimeout(() => {
+                loadingScreen.classList.add('fade-out');
+                gameContainer.classList.remove('hidden');
+
+                // 动画结束后移除加载屏幕
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    new Game();
+                }, 500);
+            }, 300);
+        },
+        // 进度回调
+        (progress, loaded, total) => {
+            loadingBar.style.width = progress + '%';
+            loadingText.textContent = `加载中... ${progress}% (${loaded}/${total})`;
+        }
+    );
 });
