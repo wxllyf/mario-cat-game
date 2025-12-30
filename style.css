@@ -451,3 +451,64 @@ button:active {
     margin-top: 10px;
     margin-right: 10px;
 }
+
+/* 手机端提示 */
+.mobile-hint {
+    text-align: center;
+    color: #ffd700;
+    font-size: 14px;
+    margin: 15px 0;
+    opacity: 0.9;
+}
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    #game-container {
+        width: 100%;
+        padding: 10px;
+        border-radius: 10px;
+    }
+
+    #gameCanvas {
+        width: 100%;
+        height: auto;
+        touch-action: none; /* 防止默认的触摸行为 */
+        user-select: none;
+    }
+
+    h1 {
+        font-size: 32px !important;
+    }
+
+    .key-display {
+        gap: 20px;
+    }
+
+    .key-box {
+        padding: 15px 20px;
+        min-width: 80px;
+    }
+
+    .key-label {
+        font-size: 32px !important;
+    }
+
+    .audio-upload-section {
+        padding: 15px;
+    }
+
+    #game-over, #start-screen {
+        min-width: auto;
+        width: 90%;
+        padding: 30px 20px;
+    }
+
+    .mobile-hint {
+        font-size: 16px;
+        font-weight: bold;
+    }
+}

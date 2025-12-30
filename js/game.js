@@ -93,6 +93,35 @@ class Game {
             }
         });
 
+        // 触摸屏支持（手机端）
+        this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (this.gameState !== 'playing') return;
+
+            // 处理多点触摸
+            for (let i = 0; i < e.touches.length; i++) {
+                const touch = e.touches[i];
+                const rect = this.canvas.getBoundingClientRect();
+                const touchX = touch.clientX - rect.left;
+
+                // 判断触摸位置在屏幕左侧还是右侧
+                if (touchX < CANVAS_WIDTH / 2) {
+                    // 左侧 - 纸巾
+                    this.handleKeyPress('left');
+                } else {
+                    // 右侧 - 胡萝卜
+                    this.handleKeyPress('right');
+                }
+            }
+        });
+
+        this.canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            // 释放所有轨道
+            this.lanes.left.release();
+            this.lanes.right.release();
+        });
+
         this.startBtn.addEventListener('click', () => this.startGame());
         this.restartBtn.addEventListener('click', () => this.startGame());
 
